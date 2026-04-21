@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Builder — Practice Platform</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f0f2f5;--surface:#fff;--border:#e2e6ea;--text:#1a1d23;--muted:#6b7280;
+  --primary:#5b6af0;--phover:#4a59e0;--danger:#ef4444;--success:#22c55e;
+  --canvas-bg:#f7f8fc;--shadow:0 2px 8px rgba(0,0,0,.08);--hh:50px;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+
+/* ── HEADER ── */
+#hdr{height:var(--hh);background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:10px;flex-shrink:0;z-index:100}
+#logo{display:flex;align-items:center;gap:7px;font-weight:800;font-size:13px;color:var(--primary);letter-spacing:-.3px}
+#logo svg{width:30px;height:30px}
+.practice-badge{font-size:10px;background:#eff6ff;color:#3b82f6;border:1px solid #bfdbfe;border-radius:20px;padding:2px 8px;font-weight:600;letter-spacing:.02em}
+#timer-wrap{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)}
+#timer{font-weight:700;font-size:14px;color:var(--text);font-variant-numeric:tabular-nums;letter-spacing:.03em}
+#timer.warn{color:#f59e0b}#timer.crit{color:var(--danger)}
+.hbtn{padding:6px 13px;border-radius:6px;border:1px solid var(--border);background:#fff;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.hbtn:hover{background:#f8f9fa}
+.hbtn.pri{background:var(--primary);color:#fff;border-color:var(--primary)}
+.hbtn.pri:hover{background:var(--phover)}
+.hbtn.red{background:var(--danger);color:#fff;border-color:var(--danger)}
+.hbtn.red:hover{background:#dc2626}
+
+/* ── MAIN ── */
+#main{display:flex;flex:1;overflow:hidden}
+
+/* ── PALETTE ── */
+#pal{width:155px;background:#fff;border-right:1px solid var(--border);overflow-y:auto;flex-shrink:0;padding:6px 0}
+.pal-section{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;padding:8px 12px 3px}
+.pnode{display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:grab;font-size:11.5px;font-weight:500;border-radius:4px;margin:1px 5px;transition:background .1s;user-select:none}
+.pnode:hover{background:#f3f4f6}
+.pnode:active{cursor:grabbing;background:#eff6ff}
+.pdot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+
+/* ── CANVAS ── */
+#cwrap{flex:1;position:relative;overflow:hidden;background:var(--canvas-bg)}
+#canvas{position:absolute;inset:0;background-image:radial-gradient(circle,#d1d5db 1px,transparent 1px);background-size:22px 22px}
+#svgl{position:absolute;inset:0;pointer-events:none;overflow:visible}
+
+/* ── NODE ── */
+.wfn{position:absolute;background:#fff;border:1.5px solid var(--border);border-radius:8px;box-shadow:var(--shadow);min-width:145px;cursor:move;user-select:none;transition:box-shadow .15s,border-color .15s}
+.wfn:hover{box-shadow:0 4px 18px rgba(0,0,0,.13)}
+.wfn.sel{border-color:var(--primary);box-shadow:0 0 0 3px rgba(91,106,240,.18)}
+.nh{display:flex;align-items:center;gap:7px;padding:7px 10px 6px;border-bottom:1px solid #f0f0f0}
+.nbar{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.ntype{font-size:10px;color:var(--muted);flex:1}
+.nbody{padding:6px 10px 8px;font-size:12px;font-weight:600;color:var(--text)}
+.port{position:absolute;width:11px;height:11px;border-radius:50%;background:#fff;border:2px solid #9ca3af;cursor:crosshair;z-index:10;transition:border-color .12s,transform .12s}
+.port:hover{border-color:var(--primary);transform:translateY(-50%) scale(1.4)!important}
+.port-out{right:-5.5px;top:50%;transform:translateY(-50%)}
+.port-in{left:-5.5px;top:50%;transform:translateY(-50%)}
+.port.act{border-color:var(--primary);background:var(--primary)}
+
+/* ── PROPS ── */
+#props{width:235px;background:#fff;border-left:1px solid var(--border);flex-shrink:0;overflow-y:auto;display:flex;flex-direction:column}
+#ph{padding:11px 14px 9px;border-bottom:1px solid var(--border);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);display:flex;align-items:center;gap:6px}
+#pc{padding:13px;flex:1}
+#nosel{color:var(--muted);font-size:12px;text-align:center;padding:24px 10px;line-height:1.7}
+#nosel span{display:block;font-size:22px;margin-bottom:6px}
+#pform.hidden{display:none}
+.pg{margin-bottom:14px}
+.pl{font-size:10px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
+.pi,.ps,.pta{width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--text);outline:none;transition:border-color .12s;font-family:inherit}
+.pi:focus,.ps:focus,.pta:focus{border-color:var(--primary)}
+.ps{background:#fff}
+.pta{resize:vertical;min-height:70px}
+.delbtn{width:100%;padding:8px;background:#fef2f2;border:1px solid #fecaca;border-radius:5px;color:var(--danger);font-size:12px;font-weight:500;cursor:pointer;transition:background .12s;margin-top:6px}
+.delbtn:hover{background:#fee2e2}
+
+/* ── BOTTOM ── */
+#bot{background:#fff;border-top:1px solid var(--border);max-height:240px;overflow-y:auto;flex-shrink:0}
+#bh{padding:10px 16px 7px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:5}
+#bt{font-size:13px;font-weight:700}
+#asn{font-size:11px;color:var(--muted)}
+#rqs{padding:12px 16px;display:flex;gap:14px;overflow-x:auto;padding-bottom:14px}
+.rqi{min-width:270px;flex:1}
+.rqn{font-size:10px;color:var(--primary);font-weight:700;margin-bottom:3px}
+.rqt{font-size:11px;color:var(--text);margin-bottom:5px;line-height:1.5;font-weight:500}
+.rqa{width:100%;padding:6px 9px;border:1px solid var(--border);border-radius:5px;font-size:11px;resize:vertical;min-height:58px;outline:none;color:var(--text);font-family:inherit;transition:border-color .12s}
+.rqa:focus{border-color:var(--primary)}
+.rqa::placeholder{color:#d1d5db}
+
+/* ── MODALS ── */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(3px)}
+.ov.hidden{display:none!important}
+.modal{background:#fff;border-radius:10px;width:640px;max-height:82vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.22)}
+.mh{padding:15px 18px 11px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:2}
+.mt{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px}
+.mx{width:26px;height:26px;border:none;background:#f3f4f6;border-radius:5px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}
+.mx:hover{background:#e5e7eb}
+.mb{padding:16px 18px;font-size:13px;line-height:1.65}
+.stag{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);background:#f3f4f6;padding:2px 7px;border-radius:3px;margin-bottom:7px}
+.ssec{margin-bottom:18px}
+.stext{color:#374151;font-size:12.5px;line-height:1.7}
+.cit{display:flex;gap:10px;padding:10px 12px;border-radius:6px;margin-bottom:7px;border-left:3px solid #f59e0b;background:#fffbeb}
+.citbody .ct{font-weight:600;font-size:12px;margin-bottom:3px}
+.citbody .cd{font-size:11.5px;color:var(--muted)}
+.sci{display:flex;gap:8px;align-items:flex-start;padding:4px 0;font-size:12px}
+.sck{color:var(--success);font-size:13px;flex-shrink:0;margin-top:1px}
+
+/* ── CANVAS HINTS ── */
+#hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#c4c9d8;pointer-events:none;transition:opacity .3s}
+#hint svg{width:48px;height:48px;stroke:#d1d5db;fill:none;margin-bottom:10px}
+#hint p{font-size:13px;font-weight:500;margin-bottom:4px}
+#hint small{font-size:11px}
+
+/* ── SAVE STATUS ── */
+#ss{position:absolute;bottom:8px;left:10px;font-size:11px;color:var(--muted)}
+
+/* ── ZOOM ── */
+#zc{position:absolute;bottom:10px;right:10px;display:flex;flex-direction:column;gap:3px}
+.zb{width:28px;height:28px;background:#fff;border:1px solid var(--border);border-radius:5px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.zb:hover{background:#f3f4f6}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:10px}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="hdr">
+  <div id="logo">
+    <svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#5b6af0"/><path d="M7 16h6l3-7 3 14 3-7h3" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    superset
+  </div>
+  <span class="practice-badge">PRACTICE MODE</span>
+  <div id="timer-wrap">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    Remaining &nbsp;<span id="timer">45:00</span>
+  </div>
+  <button class="hbtn" id="btn-brief">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h8M7 16h6"/></svg>
+    Challenge Brief
+  </button>
+  <button class="hbtn pri" id="btn-sub">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+    Submit Answer
+  </button>
+  <button class="hbtn red" id="btn-end">End Challenge</button>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div id="main">
+
+  <!-- PALETTE -->
+  <div id="pal">
+    <div class="pal-section">Node Palette</div>
+  </div>
+
+  <!-- CANVAS -->
+  <div id="cwrap">
+    <div id="canvas">
+      <svg id="svgl"></svg>
+      <div id="hint">
+        <svg viewBox="0 0 48 48" stroke-width="1.5"><rect x="6" y="14" width="14" height="20" rx="3"/><rect x="28" y="14" width="14" height="20" rx="3"/><path d="M20 24h8" stroke-dasharray="3 2"/></svg>
+        <p>Drag nodes from the palette to start building</p>
+        <small>Click output ports (→) to connect nodes &nbsp;|&nbsp; Select a node to edit properties</small>
+      </div>
+      <div id="ss">Saved</div>
+    </div>
+    <div id="zc">
+      <button class="zb" id="zin" title="Zoom in">+</button>
+      <button class="zb" id="zout" title="Zoom out">−</button>
+    </div>
+  </div>
+
+  <!-- PROPERTIES -->
+  <div id="props">
+    <div id="ph">Properties</div>
+    <div id="pc">
+      <div id="nosel"><span>⬡</span>Select a node to view and edit its properties</div>
+      <div id="pform" class="hidden"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM: REFLECTION QUESTIONS -->
+<div id="bot">
+  <div id="bh">
+    <div id="bt">Reflection Questions</div>
+    <div id="asn">Answer each question before submitting. Your canvas is still auto-saving.</div>
+  </div>
+  <div id="rqs"></div>
+</div>
+
+<!-- CHALLENGE BRIEF MODAL -->
+<div class="ov hidden" id="mo-brief">
+  <div class="modal">
+    <div class="mh">
+      <div class="mt">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h8M7 16h6"/></svg>
+        Retail Promotion Optimisation Agent
+      </div>
+      <button class="mx" id="close-brief">✕</button>
+    </div>
+    <div class="mb">
+      <div class="ssec">
+        <span class="stag">Scenario</span>
+        <div class="stext">RetailCo, a leading consumer goods company, runs frequent promotional campaigns across multiple retail channels (modern trade, e-commerce, and general trade) to increase sales volume, improve product visibility, and clear excess inventory. However, promotion planning is currently inefficient: some products are over-promoted (reducing margins without incremental sales); some high-potential products are under-promoted (missing revenue opportunities); promotions are applied uniformly across stores ignoring local demand differences, and channels compete for limited promotional budgets. Discounts and promotional slots are limited resources — excessive promotions can lead to brand dilution and customer fatigue, some products have supply constraints making aggressive promotion risky, and retrieving detailed demand, supply, and channel data incurs latency.</div>
+      </div>
+      <div class="ssec">
+        <span class="stag">Problem Statement</span>
+        <div class="stext">Design a GenAI workflow that receives a promotion planning input (product ID, channel, region, and basic context) and selectively calls relevant APIs to gather additional signals.<br><br>
+        Using the retrieved data, the workflow should evaluate promotion effectiveness across demand, supply, and channel signals, use confidence-based logic to determine whether additional data is required, prioritise products and channels for promotion, determine the appropriate strategy (increase, maintain, reduce, avoid), and generate a clear rationale.<br><br>
+        <strong>Input includes product ID, channel, and region plus initial structured signals:</strong><br>
+        — Current Promotion Level: High / Medium / Low / None<br>
+        — Inventory Status: Excess / Adequate / Limited / Stock risk</div>
+      </div>
+      <div class="ssec">
+        <span class="stag">Constraints</span>
+        <div class="cit"><div class="citbody"><div class="ct">⚠ Selective API Usage</div><div class="cd">The workflow must decide which APIs to call and when based on the input signals and intermediate confidence. Calling all APIs blindly will be penalised — the workflow should only retrieve data that is relevant to the current case.</div></div></div>
+        <div class="cit"><div class="citbody"><div class="ct">⚠ Confidence-Based Branching</div><div class="cd">At each decision stage, the system must evaluate its confidence. High confidence proceeds to recommendation; low confidence triggers additional API calls. The workflow must show explicit confidence checkpoints.</div></div></div>
+        <div class="cit"><div class="citbody"><div class="ct">⚠ Supply-Demand Trade-off</div><div class="cd">The system must balance promoting high-demand products to maximise revenue against avoiding promotion when supply is limited. Promoting a product with stock risk wastes budget and damages customer trust.</div></div></div>
+        <div class="cit"><div class="citbody"><div class="ct">⚠ Over-Promotion Risk</div><div class="cd">High promotion frequency may lead to margin loss, brand dilution, and reduced incremental impact. The workflow must detect over-promotion signals and recommend reduction or avoidance where appropriate.</div></div></div>
+        <div class="cit"><div class="citbody"><div class="ct">⚠ Explainability</div><div class="cd">Every recommendation must include a clear rationale of which APIs were called, why they were called, and how signals influenced the final promotion strategy and channel prioritisation.</div></div></div>
+      </div>
+      <div class="ssec">
+        <span class="stag">Success Criteria</span>
+        <div class="sci"><span class="sck">✓</span> APIs are called selectively based on input signals and intermediate confidence — not all APIs on every request</div>
+        <div class="sci"><span class="sck">✓</span> Promotion decisions are based on multiple signals (demand, supply, channel performance, competition, pricing sensitivity)</div>
+        <div class="sci"><span class="sck">✓</span> Products and channels are prioritised logically — not all products receive the same strategy</div>
+        <div class="sci"><span class="sck">✓</span> Promotion strategy (increase, maintain, reduce, avoid) is determined consistently for similar inputs</div>
+        <div class="sci"><span class="sck">✓</span> Supply constraints are checked — limited stock does not receive increased promotion</div>
+        <div class="sci"><span class="sck">✓</span> Over-promotion risk is detected and handled — high past frequency triggers reduce or avoid</div>
+        <div class="sci"><span class="sck">✓</span> Trade-offs between competing signals are explicitly addressed (e.g., high demand but limited inventory)</div>
+        <div class="sci"><span class="sck">✓</span> Unnecessary API calls are avoided</div>
+        <div class="sci"><span class="sck">✓</span> A clear, structured rationale is generated for each decision including APIs used and signal reasoning</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SUBMIT MODAL -->
+<div class="ov hidden" id="mo-sub">
+  <div class="modal" style="width:430px">
+    <div class="mh"><div class="mt">Submit Your Solution</div><button class="mx" id="close-sub">✕</button></div>
+    <div class="mb">
+      <p style="margin-bottom:12px;color:var(--muted)">Before submitting, verify that:</p>
+      <div class="sci"><span class="sck">✓</span> Your workflow nodes are connected end-to-end</div>
+      <div class="sci"><span class="sck">✓</span> You have addressed all 5 confidence &amp; branching constraints</div>
+      <div class="sci"><span class="sck">✓</span> All 5 reflection questions have been answered</div>
+      <div class="sci"><span class="sck">✓</span> Your output includes a clear rationale</div>
+      <div style="margin-top:18px;display:flex;gap:10px">
+        <button class="hbtn" id="cancel-sub" style="flex:1">Go Back</button>
+        <button class="hbtn pri" id="confirm-sub" style="flex:1">✓ Confirm Submission</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SUCCESS MODAL -->
+<div class="ov hidden" id="mo-ok">
+  <div class="modal" style="width:400px">
+    <div class="mb" style="text-align:center;padding:36px 28px">
+      <div style="font-size:52px;margin-bottom:14px">🎉</div>
+      <div style="font-size:17px;font-weight:700;margin-bottom:8px">Practice Session Submitted!</div>
+      <div style="color:var(--muted);font-size:12.5px;line-height:1.7;margin-bottom:22px">Great work completing the practice challenge. Review your workflow and reflection answers carefully — look for gaps in confidence branching, API selectivity, and explainability before the real round.</div>
+      <button class="hbtn pri" id="close-ok" style="width:100%">Continue Practising</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════
+// NODE TYPE DEFINITIONS
+// ════════════════════════════════
+const NT = [
+  {id:'input',    lbl:'Input',               col:'#4F8EF7', hi:false,ho:true },
+  {id:'llm',      lbl:'LLM Step',            col:'#7C5CBF', hi:true, ho:true },
+  {id:'know',     lbl:'Knowledge Retrieval', col:'#2BAF7E', hi:true, ho:true },
+  {id:'class',    lbl:'Classifier / Router', col:'#F5A623', hi:true, ho:true },
+  {id:'cond',     lbl:'Condition / Branch',  col:'#F5733A', hi:true, ho:true },
+  {id:'loop',     lbl:'Loop',                col:'#4F8EF7', hi:true, ho:true },
+  {id:'hand',     lbl:'Human Handoff',       col:'#9B59B6', hi:true, ho:false},
+  {id:'fmt',      lbl:'Output Formatter',    col:'#27AE60', hi:true, ho:false},
+  {id:'guard',    lbl:'Evaluator / Guardrail',col:'#E74C3C',hi:true, ho:true },
+  {id:'retry',    lbl:'Retry / Fallback',    col:'#95A5A6', hi:true, ho:true },
+  {id:'code',     lbl:'Custom Code',         col:'#8E44AD', hi:true, ho:true },
+  {id:'prompt',   lbl:'Prompt Template',     col:'#E91E8C', hi:true, ho:true },
+  {id:'merge',    lbl:'Merge / Join',        col:'#1ABC9C', hi:true, ho:true },
+  {id:'note',     lbl:'Note',                col:'#F1C40F', hi:false,ho:false},
+];
+
+const NP = {
+  input:  [{k:'fields',l:'Input Fields',t:'ta',p:'product_id, channel, region, promotion_level, inventory_status'}],
+  llm:    [{k:'model',l:'Model',t:'sel',o:['claude-sonnet-4','claude-opus-4','gpt-4o','gemini-1.5-pro']},{k:'prompt',l:'System Prompt',t:'ta',p:'You are a retail promotion strategy analyst...'}],
+  know:   [{k:'src',l:'Data Source / API',t:'inp',p:'DemandAPI / SupplyAPI / ChannelAPI / PricingAPI'},{k:'q',l:'Query Template',t:'ta',p:'Retrieve demand signals for {product_id} in {region}'}],
+  class:  [{k:'cats',l:'Route Categories',t:'ta',p:'excess_inventory\nstock_risk\nadequate_stock\nlimited_stock'}],
+  cond:   [{k:'cond',l:'Branch Condition',t:'inp',p:'confidence_score > 0.80'},{k:'yes',l:'True Branch Label',t:'inp',p:'High Confidence → Recommend'},{k:'no',l:'False Branch Label',t:'inp',p:'Low Confidence → Fetch More Data'}],
+  loop:   [{k:'iter',l:'Max Iterations',t:'inp',p:'3'},{k:'exit',l:'Exit Condition',t:'inp',p:'confidence >= 0.85 OR iterations == 3'}],
+  hand:   [{k:'reason',l:'Escalation Reason',t:'ta',p:'Stock risk with conflicting signals — needs human review'}],
+  fmt:    [{k:'format',l:'Output Format',t:'sel',o:['JSON','Markdown','Plain Text','Structured Report']},{k:'inst',l:'Formatting Instructions',t:'ta',p:'Include: strategy (increase/maintain/reduce/avoid), rationale, APIs called, signal summary'}],
+  guard:  [{k:'checks',l:'Guardrail Checks',t:'ta',p:'1. Over-promotion frequency check\n2. Inventory constraint gate\n3. Margin impact threshold'}],
+  retry:  [{k:'max',l:'Max Retries',t:'inp',p:'3'},{k:'fall',l:'Fallback Action',t:'inp',p:'Return cached recommendation with confidence caveat'}],
+  code:   [{k:'fn',l:'Function Code',t:'ta',p:'// Compute confidence score from signals\nfunction calcConfidence(demand, supply, channel) {\n  // weighted scoring logic\n}'}],
+  prompt: [{k:'tpl',l:'Prompt Template',t:'ta',p:'Analyse promotion for product {{product_id}} in {{channel}}, {{region}}.\nCurrent level: {{promo_level}}\nInventory: {{inventory}}\nSignals: {{api_data}}'}],
+  merge:  [{k:'strat',l:'Merge Strategy',t:'sel',o:['Combine all inputs','First success','Weighted signal average']}],
+  note:   [{k:'txt',l:'Note',t:'ta',p:'Add a comment or annotation...'}],
+};
+
+const QS = [
+  "How does your workflow decide which APIs to call for a given product-channel input? Walk through the decision logic for the excess inventory sample vs the stock risk sample.",
+  "How does your design handle over-promotion risk? What signals trigger a 'reduce' or 'avoid' strategy instead of maintaining or increasing promotion?",
+  "Describe how you handle the trade-off between high demand and limited inventory. What does the workflow recommend and why?",
+  "Explain your confidence-based branching logic. At which stages is confidence evaluated, and what threshold determines whether additional API calls are triggered?",
+  "How does your workflow ensure explainability? What information is included in the final output rationale, and how are API call decisions communicated clearly?"
+];
+
+// ════════════════════════════════
+// STATE
+// ════════════════════════════════
+let nodes=[], conns=[], selId=null, drag=null, conn=null, pline=null, nodeC=0;
+let timerS=45*60, timerTick=null, palType=null;
+
+// ════════════════════════════════
+// INIT
+// ════════════════════════════════
+function init(){
+  buildPalette();
+  buildQuestions();
+  startTimer();
+  setupEvents();
+}
+
+// ════════════════════════════════
+// PALETTE
+// ════════════════════════════════
+function buildPalette(){
+  const p=document.getElementById('pal');
+  NT.forEach(n=>{
+    const d=document.createElement('div');
+    d.className='pnode';d.draggable=true;d.dataset.tid=n.id;
+    d.innerHTML=`<div class="pdot" style="background:${n.col}"></div><span>${n.lbl}</span>`;
+    d.addEventListener('dragstart',e=>{palType=n.id;e.dataTransfer.effectAllowed='copy';});
+    d.addEventListener('dragend',()=>{palType=null;});
+    p.appendChild(d);
+  });
+}
+
+// ════════════════════════════════
+// QUESTIONS
+// ════════════════════════════════
+function buildQuestions(){
+  const c=document.getElementById('rqs');
+  QS.forEach((q,i)=>{
+    const d=document.createElement('div');d.className='rqi';
+    d.innerHTML=`<div class="rqn">${i+1}</div><div class="rqt">${q}</div><textarea class="rqa" placeholder="Write your answer here..." id="rq${i}"></textarea>`;
+    c.appendChild(d);
+  });
+}
+
+// ════════════════════════════════
+// TIMER
+// ════════════════════════════════
+function startTimer(){
+  timerTick=setInterval(()=>{
+    if(timerS>0)timerS--;
+    const m=String(Math.floor(timerS/60)).padStart(2,'0');
+    const s=String(timerS%60).padStart(2,'0');
+    const el=document.getElementById('timer');
+    el.textContent=`${m}:${s}`;
+    el.className=timerS<300?'crit':timerS<600?'warn':'';
+  },1000);
+}
+
+// ════════════════════════════════
+// AUTOSAVE
+// ════════════════════════════════
+let saveT=null;
+function save(){
+  clearTimeout(saveT);
+  document.getElementById('ss').textContent='Saving...';
+  saveT=setTimeout(()=>{document.getElementById('ss').textContent='Saved';},700);
+}
+
+// ════════════════════════════════
+// NODE CREATE
+// ════════════════════════════════
+function mkNode(tid,x,y){
+  const nt=NT.find(n=>n.id===tid);if(!nt)return;
+  const id='n'+(++nodeC);
+  const node={id,tid,lbl:nt.lbl,x,y,cfg:{}};
+  nodes.push(node);
+  renderNode(node);
+  document.getElementById('hint').style.opacity='0';
+  save();return node;
+}
+
+function renderNode(node){
+  const nt=NT.find(n=>n.id===node.tid);
+  const el=document.createElement('div');
+  el.className='wfn';el.id=node.id;
+  el.style.cssText=`left:${node.x}px;top:${node.y}px`;
+  el.innerHTML=`
+    <div class="nh"><div class="nbar" style="background:${nt.col}"></div><span class="ntype">${nt.lbl}</span></div>
+    <div class="nbody">${node.lbl}</div>
+    ${nt.hi?`<div class="port port-in" data-nid="${node.id}" data-p="in"></div>`:''}
+    ${nt.ho?`<div class="port port-out" data-nid="${node.id}" data-p="out"></div>`:''}
+  `;
+  // Drag node
+  el.addEventListener('mousedown',e=>{
+    if(e.target.classList.contains('port'))return;
+    e.preventDefault();
+    const r=el.getBoundingClientRect();
+    drag={id:node.id,ox:e.clientX-r.left,oy:e.clientY-r.top};
+    selNode(node.id);
+  });
+  // Ports
+  el.querySelectorAll('.port').forEach(pt=>{
+    pt.addEventListener('mousedown',e=>{
+      e.stopPropagation();e.preventDefault();
+      if(pt.dataset.p==='out'){
+        const cr=document.getElementById('canvas').getBoundingClientRect();
+        const r=pt.getBoundingClientRect();
+        const x1=r.left+r.width/2-cr.left,y1=r.top+r.height/2-cr.top;
+        conn={id:node.id,x1,y1};pline={x1,y1,x2:x1,y2:y1};
+        pt.classList.add('act');rsvg();
+      } else if(pt.dataset.p==='in'&&conn&&conn.id!==node.id){
+        conns.push({id:'c'+Date.now(),from:conn.id,to:node.id});
+        document.getElementById(conn.id)?.querySelectorAll('.port').forEach(p=>p.classList.remove('act'));
+        conn=null;pline=null;rsvg();save();
+      }
+    });
+  });
+  document.getElementById('canvas').appendChild(el);
+}
+
+function selNode(id){
+  document.querySelectorAll('.wfn').forEach(n=>n.classList.remove('sel'));
+  selId=id;
+  document.getElementById(id)?.classList.add('sel');
+  renderProps();
+}
+
+// ════════════════════════════════
+// PROPERTIES
+// ════════════════════════════════
+function renderProps(){
+  const node=nodes.find(n=>n.id===selId);
+  const ns=document.getElementById('nosel'),pf=document.getElementById('pform'),ph=document.getElementById('ph');
+  if(!node){ns.style.display='';pf.classList.add('hidden');ph.innerHTML='Properties';return;}
+  const nt=NT.find(n=>n.id===node.tid);
+  ph.innerHTML=`<span style="display:inline-block;width:9px;height:9px;background:${nt.col};border-radius:2px;margin-right:5px"></span>${nt.lbl}`;
+  ns.style.display='none';pf.classList.remove('hidden');
+  const fields=NP[node.tid]||[];
+  pf.innerHTML=`
+    <div class="pg"><div class="pl">Label</div><input class="pi" id="pf-lbl" value="${node.lbl}"></div>
+    ${fields.map(f=>`
+      <div class="pg"><div class="pl">${f.l}</div>
+      ${f.t==='sel'?`<select class="ps" id="pf-${f.k}">${f.o.map(o=>`<option${node.cfg[f.k]===o?' selected':''}>${o}</option>`).join('')}</select>`
+       :f.t==='ta'?`<textarea class="pta" id="pf-${f.k}" placeholder="${f.p||''}">${node.cfg[f.k]||''}</textarea>`
+       :`<input class="pi" id="pf-${f.k}" value="${node.cfg[f.k]||''}" placeholder="${f.p||''}">`}
+      </div>`).join('')}
+    <button class="delbtn" id="pf-del">🗑 Delete Node</button>
+  `;
+  document.getElementById('pf-lbl').addEventListener('input',e=>{
+    node.lbl=e.target.value;
+    document.getElementById(node.id)?.querySelector('.nbody').textContent=e.target.value;save();
+  });
+  fields.forEach(f=>{
+    document.getElementById('pf-'+f.k)?.addEventListener('input',e=>{node.cfg[f.k]=e.target.value;save();});
+  });
+  document.getElementById('pf-del').addEventListener('click',()=>delNode(node.id));
+}
+
+function delNode(id){
+  nodes=nodes.filter(n=>n.id!==id);
+  conns=conns.filter(c=>c.from!==id&&c.to!==id);
+  document.getElementById(id)?.remove();
+  selId=null;renderProps();rsvg();
+  if(nodes.length===0)document.getElementById('hint').style.opacity='1';
+  save();
+}
+
+// ════════════════════════════════
+// SVG CONNECTIONS
+// ════════════════════════════════
+function portPos(nid,pt){
+  const el=document.getElementById(nid);if(!el)return null;
+  const cr=document.getElementById('canvas').getBoundingClientRect();
+  const p=el.querySelector(`.port-${pt}`);if(!p)return null;
+  const r=p.getBoundingClientRect();
+  return{x:r.left+r.width/2-cr.left,y:r.top+r.height/2-cr.top};
+}
+
+function rsvg(){
+  const svg=document.getElementById('svgl');
+  const cr=document.getElementById('canvas').getBoundingClientRect();
+  svg.setAttribute('width',cr.width);svg.setAttribute('height',cr.height);
+  let h='<defs><marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3z" fill="#5b6af0" opacity=".75"/></marker></defs>';
+  conns.forEach(c=>{
+    const a=portPos(c.from,'out'),b=portPos(c.to,'in');
+    if(a&&b){const dx=Math.max(50,Math.abs(b.x-a.x)*.55);
+      h+=`<path d="M${a.x},${a.y} C${a.x+dx},${a.y} ${b.x-dx},${b.y} ${b.x},${b.y}" fill="none" stroke="#5b6af0" stroke-width="2" stroke-opacity=".7" marker-end="url(#arr)"/>`;
+    }
+  });
+  if(pline){const{x1,y1,x2,y2}=pline;const dx=Math.abs(x2-x1)*.5;
+    h+=`<path d="M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}" fill="none" stroke="#5b6af0" stroke-width="1.8" stroke-opacity=".5" stroke-dasharray="6 3"/>`;
+  }
+  svg.innerHTML=h;
+}
+
+// ════════════════════════════════
+// EVENTS
+// ════════════════════════════════
+function setupEvents(){
+  const cv=document.getElementById('canvas');
+
+  // Drop from palette
+  cv.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='copy';});
+  cv.addEventListener('drop',e=>{
+    e.preventDefault();if(!palType)return;
+    const r=cv.getBoundingClientRect();
+    mkNode(palType,e.clientX-r.left-72,e.clientY-r.top-28);
+    palType=null;
+  });
+
+  // Mouse move (drag node + pending line)
+  document.addEventListener('mousemove',e=>{
+    if(drag){
+      const cr=cv.getBoundingClientRect();
+      const node=nodes.find(n=>n.id===drag.id);
+      if(node){
+        node.x=e.clientX-cr.left-drag.ox;node.y=e.clientY-cr.top-drag.oy;
+        const el=document.getElementById(node.id);
+        if(el){el.style.left=node.x+'px';el.style.top=node.y+'px';}rsvg();
+      }
+    }
+    if(conn){
+      const cr=cv.getBoundingClientRect();
+      pline={...pline,x2:e.clientX-cr.left,y2:e.clientY-cr.top};rsvg();
+    }
+  });
+
+  document.addEventListener('mouseup',e=>{
+    if(drag){drag=null;save();}
+  });
+
+  cv.addEventListener('click',e=>{
+    if(e.target===cv||e.target.id==='svgl'){
+      if(conn){
+        document.getElementById(conn.id)?.querySelectorAll('.port').forEach(p=>p.classList.remove('act'));
+        conn=null;pline=null;rsvg();
+      } else {
+        selId=null;document.querySelectorAll('.wfn').forEach(n=>n.classList.remove('sel'));renderProps();
+      }
+    }
+  });
+
+  document.addEventListener('keydown',e=>{
+    if((e.key==='Delete'||e.key==='Backspace')&&selId&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){delNode(selId);}
+    if(e.key==='Escape'&&conn){
+      document.getElementById(conn.id)?.querySelectorAll('.port').forEach(p=>p.classList.remove('act'));
+      conn=null;pline=null;rsvg();
+    }
+  });
+
+  // Header buttons
+  document.getElementById('btn-brief').addEventListener('click',()=>document.getElementById('mo-brief').classList.remove('hidden'));
+  document.getElementById('close-brief').addEventListener('click',()=>document.getElementById('mo-brief').classList.add('hidden'));
+  document.getElementById('mo-brief').addEventListener('click',e=>{if(e.target.id==='mo-brief')document.getElementById('mo-brief').classList.add('hidden');});
+
+  document.getElementById('btn-sub').addEventListener('click',()=>document.getElementById('mo-sub').classList.remove('hidden'));
+  document.getElementById('close-sub').addEventListener('click',()=>document.getElementById('mo-sub').classList.add('hidden'));
+  document.getElementById('cancel-sub').addEventListener('click',()=>document.getElementById('mo-sub').classList.add('hidden'));
+  document.getElementById('confirm-sub').addEventListener('click',()=>{
+    document.getElementById('mo-sub').classList.add('hidden');
+    document.getElementById('mo-ok').classList.remove('hidden');
+    clearInterval(timerTick);
+  });
+  document.getElementById('close-ok').addEventListener('click',()=>{
+    document.getElementById('mo-ok').classList.add('hidden');
+    timerS=45*60;
+    document.getElementById('timer').textContent='45:00';
+    document.getElementById('timer').className='';
+    startTimer();
+  });
+
+  document.getElementById('btn-end').addEventListener('click',()=>{
+    if(confirm('End this practice session?')){clearInterval(timerTick);timerS=0;document.getElementById('timer').textContent='00:00';}
+  });
+
+  window.addEventListener('resize',rsvg);
+
+  // Zoom buttons (visual scale)
+  let scale=1;
+  document.getElementById('zin').addEventListener('click',()=>{scale=Math.min(scale+0.1,2);cv.style.transform=`scale(${scale})`;cv.style.transformOrigin='0 0';});
+  document.getElementById('zout').addEventListener('click',()=>{scale=Math.max(scale-0.1,0.4);cv.style.transform=`scale(${scale})`;cv.style.transformOrigin='0 0';});
+}
+
+init();
+</script>
+</body>
+</html>
